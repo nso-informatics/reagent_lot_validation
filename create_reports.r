@@ -18,13 +18,17 @@ render_document <- function(analyte,data, recommendation) {
 render_query <- function() {
     rmarkdown::render("reagent_lot_validation.Rmd", params = "ask")}
 
+## Document names string must be: ANALYTE_lot_validation_Lot#XXXXXXXXX.xls 
 rename_document <- function(analyte,data){
-    date <- regmatches(data,
-                       regexpr("[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}",
-                               data, perl=TRUE))
-
+    ## date <- regmatches(data,
+    ##                    regexpr("[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}",
+    ##                            data, perl=TRUE))
+    
+    lot <- regmatches(data,
+                       regexpr("[[:digit:]]{6}", data, perl=TRUE))
+    
     file.rename(from = pdf_output,
-                to = paste0(analyte, "_Reagent_Validation_", date, ".pdf"))
+                to = paste0(analyte, "_Reagent_Validation_", lot,"_", Sys.Date(), ".pdf"))
 }
 
 create_report <- function(analyte,data,recommendation){
@@ -32,7 +36,13 @@ create_report <- function(analyte,data,recommendation){
     rename_document(analyte,data)
 }
 
-create_report(analyte = "TSH", data = "TSH_lot_validation_2017-04-05.xls",
+create_report(analyte = "N17P", data = "17OHP New Kit Lot Validation Worksheet Lot#656884.xls",
+              recommendation = "accepted")
+
+create_report(analyte = "TSH", data = "TSH New Kit Lot Validation Worksheet Lot#657128.xls",
+              recommendation = "accepted")
+
+params <- list(analyte = "N17P", data = "17OHP New Kit Lot Validation Worksheet Lot#656884.xls",
               recommendation = "accepted")
 
 

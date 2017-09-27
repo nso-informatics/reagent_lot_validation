@@ -73,7 +73,8 @@ lots (figures \ref{fig:dem}, \ref{fig:diff}).
 
 ```{r}
 comp <- read_xls(params$data, sheet = 2)
-pander:pander(summary(comp[, c("old", "new")]))
+## until pander bug is fixed
+##pander:pander(summary(comp[, c("old", "new")]))
 ```
 
 ```{r, fig.cap="\\label{fig:dens}Density plot for the reagent lot comparison"}
