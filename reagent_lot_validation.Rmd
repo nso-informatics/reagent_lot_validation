@@ -1,0 +1,170 @@
+---
+title: "Immunoassay Reagent Lot Validation"
+output: 
+    pdf_document:
+        keep_tex: true
+        includes:
+            in_header: header.tex
+        fig_caption: yes
+        number_sections: yes
+fontsize: 11pt 
+geometry: margin=1in
+params:
+    analyte: 
+        label: "Analyte:"
+        value: "TSH"
+        input: select
+        choices: [TSH, N17P, IRT]
+    data: 
+        label: "Input dataset:"
+        value: TSH_lot_validation_2017-04-05.xls
+        input: text
+    recommendation: 
+        label: "Recommendation:"
+        value: ""
+        input: select
+        choices: [accepted, not accepted]
+---
+
+\centering
+
+\includegraphics[width = 60mm]{./figures/NSO_logo.pdf}
+
+\raggedright
+\tableofcontents 
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=6)
+```
+
+```{r} 
+library("dplyr")
+library("magrittr")
+library("ggplot2")
+library("tidyr")
+library("mcr")
+library("readxl")
+library("pander")
+library("qcc")
+
+## set analyte_info dependant on analyte
+info <- switch(params$analyte,
+               "TSH" = list(units = "mIU/L", threshold = 17, upper = 40),
+               "N17P" = list(units = "nmol/L", threshold = 38, upper = 60),
+               "IRT" = list(units = "ng/ml", threshold = 48, upper = 100))
+```
+
+# Recommendation 
+
+The `r params$analyte` reagent lot is `r params$recommendation` for use.
+
+# Methods
+- Three `r params$analyte` reagent validation plates were run on three consecutive days.
+- The data source used in this analysis is: `r params$data`
+
+# Validation Analysis
+
+Deming regression was used to assess the agreement between the `r params$analyte` kit
+lots (figures \ref{fig:dem}, \ref{fig:diff}).
+
+
+## Data Summary
+
+```{r}
+comp <- read_xls(params$data, sheet = 2)
+pander:pander(summary(comp[, c("old", "new")]))
+```
+
+```{r, fig.cap="\\label{fig:dens}Density plot for the reagent lot comparison"}
+
+  comp %>%
+      gather(lot, result, old:new) %>%
+      ggplot(aes(result, fill = lot)) +
+      geom_density(alpha = 0.5) +
+      facet_grid(.~ day) +
+      xlab(paste(params$analyte, info$units)) +
+      scale_fill_discrete(name = "Lot")
+    
+  # labs(title = "Density plot for the TSH reagent lot comparison")
+```
+
+## Paired T-test
+
+```{r}
+pander::pander(t.test(comp$old, comp$new, paired = TRUE))
+```
+
+## Regression Analysis
+
+```{r, fig.cap="\\label{fig:dem}Deming regression"}
+comp.deming <- mcreg(x = comp$old, y =comp$new, error.ratio = 1, alpha = 0.05,
+                     mref.name = "Old", mtest.name = "New", sample.names = NULL,
+                     method.reg = "Deming", method.ci = "bootstrap",
+                     method.bootstrap.ci = "BCa",
+                     nsamples = 999, rng.seed = NULL, rng.kind = "Mersenne-Twister", iter.max = 30,
+                     threshold = 1e-06, na.rm = TRUE, NBins = 1e+06)
+
+plot(comp.deming, x.lab = "Old", y.lab = "New", main=paste(params$analyte, "Reagent Lot Comparision"))
+```
+
+
+The data set was filtered to remove values greater than `r info$upper`.
+
+```{r, fig.cap="\\label{fig:dem}Filtered Deming regression"}
+trim <- comp %>%
+     filter(old < info$upper & new < info$upper)
+
+    trim.deming <- mcreg(x = trim$old, y =trim$new, error.ratio = 1, alpha = 0.05,
+                   mref.name = "Old", mtest.name = "New", sample.names = NULL,
+                   method.reg = "Deming", method.ci = "bootstrap",
+                   method.bootstrap.ci = "BCa",
+                   nsamples = 999, rng.seed = NULL, rng.kind = "Mersenne-Twister", iter.max = 30,
+                   threshold = 1e-06, na.rm = TRUE, NBins = 1e+06)
+
+  plot(trim.deming, x.lab = "Old", y.lab = "New", main=paste(params$analyte, "Filtered Reagent Lot Comparision"))
+```
+
+
+```{r} 
+pander::pander(trim.deming@para, caption = "\\label{tab:para}Regression Parameters")
+``` 
+
+
+```{r,fig.cap="\\label{fig:diff}Difference Plot"}
+plotDifference(trim.deming, main= paste(params$analyte, "Reagent Lot Comparision"))
+```
+
+## Screening Thresholds
+ 
+The regression parameters (table \ref{tab:para}) were used to determine the effect of this reagent lot on the screening threshold.
+
+```{r}
+intercept <- trim.deming@para[1,1] # intercept
+slope <- trim.deming@para[2,1] # slope
+
+reg <- function(m,x,b){
+      y <- m * x + b
+      return(round(y, digits = 3))
+}
+```
+- A result of `r reg(slope, info$threshold, intercept)` `r info$units` with this `r params$analyte` reagent lot is equivalent to a value at the screening threshold (`r info$threshold` `r info$units`) with the current reagent lot.
+
+
+## Quality Control Material
+- Shewhart Xbar charts illustrate QC performance during the validation phase
+  (Figures \ref{fig:qc1}, \ref{fig:qc2} and \ref{fig:qc3}).
+
+
+```{r, fig.cap="\\label{fig:qc1} Xbar.one plot of QC Level 1 validation data"}
+qc <- read_excel(params$data, sheet = 3)
+qc1 <- qcc(qc$QC1, type = "xbar.one",  nsigmas = 3, std.dev = "SD", chart.all = FALSE, title = "QC 1", ylab = "ng/ml", xlab = "run")
+```
+
+```{r, fig.cap="\\label{fig:qc2} Xbar.one plot of QC Level 2 validation data"}
+qc2 <- qcc(qc$QC2, type = "xbar.one", nsigmas = 3, std.dev = "SD", chart.all = FALSE, title = "QC 2", ylab = "ng/ml", xlab = "run")
+```
+
+```{r,fig.cap="\\label{fig:qc3} Xbar.one plot of QC Level 3 validation data"}
+qc3 <- qcc(qc$QC3, type = "xbar.one", nsigmas = 3, std.dev = "SD", chart.all = FALSE, title = "QC 3", ylab = "ng/ml", xlab = "run")
+```
