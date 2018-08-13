@@ -1,10 +1,12 @@
 ---
 title: "Immunoassay Reagent Lot Validation"
+author: Matthew Henderson, PhD, FCACB
+date: "`r format(Sys.time(), '%d %B %Y')`"
 output: 
     pdf_document:
-        keep_tex: true
+        keep_tex: false
         includes:
-            in_header: header.tex
+            in_header: ../resources/header.tex
         fig_caption: yes
         number_sections: yes
 fontsize: 11pt 
@@ -26,11 +28,9 @@ params:
         choices: [accepted, not accepted]
 ---
 
-\centering
-
-\includegraphics[width = 60mm]{./figures/NSO_logo.pdf}
-
-\raggedright
+\begin{center}
+\includegraphics[width = 60mm]{../resources/NSO_logo.pdf}
+\end{center}
 \tableofcontents 
 
 
