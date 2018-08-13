@@ -1,6 +1,6 @@
 library("rmarkdown")
 library("shiny")
-
+options(browser = "/usr/bin/firefox")
 Rmd_template <- "reagent_lot_validation.Rmd"
 pdf_output <- "reagent_lot_validation.pdf"
 
